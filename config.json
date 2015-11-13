@@ -1,0 +1,34 @@
+{
+"mysql":[{
+	"host":"localhost",
+	"user":"logger",
+	"password":"password",
+	"database":"temperatures"
+	}],
+"sensors":[{
+	"sensor1":"Outside",
+	"sensor2":"Inside"
+	}],
+"triggerlimits":[{
+	"sensor1lowlimit":"-20",
+	"sensor2lowlimit":"5",
+	"sensor1highlimit":"35",
+	"sensor2highlimit":"20"
+	}],
+"sensorgpios":[{
+	"gpiosensor1":"22",
+	"gpiosensor2":"23"
+	}],
+"mailinfo":[{
+	"senderaddress":"email address to sender field@gmail.com",
+	"receiveraddress":"email address where to send warnings@gmail.com",
+	"username":"username",
+	"password":"password",
+	"subjectmessage":"Info from temperature logger",
+	"subjectwarning":"Warning from temperature logger"
+	}],
+"sensortype":"22",
+"sensoramount":"2",
+"sqlbackuppath":"/home/pi/DHT22-TemperatureLogger/Backups/",
+"adafruitpath":"/home/pi/Adafruit_Python_DHT/examples/AdafruitDHT.py"
+}
