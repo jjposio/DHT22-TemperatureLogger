@@ -288,6 +288,7 @@ def main():
 	msgType = "Warning"	
 
 	sensor1error = 0
+	okToUpdate = False
 	# Sensor 1 readings and limit check
 	try:
 		sensor1temperature, sensor1humidity = sensorReadings(gpioForSensor1, sensorType)
@@ -324,6 +325,7 @@ def main():
 	
 	# sensor 2 readings and limit check
 	sensor2error = 0
+	okToUpdate = False
 	
 	if sensorsToRead != "1":
 		try:
