@@ -60,18 +60,20 @@ def sensorReadings(gpio, sensor):
 	humidity = re.findall(r"Humidity=(\d+.\d+)", sensorReadings)[0]
 	intTemp = float(temperature)
 	intHumidity = float(humidity)
-	
+
 	return intTemp, intHumidity
 
 # function for getting weekly average temperatures.
 def getWeeklyAverageTemp(sensor):
+
+	weekAverageTemp = ""	
 	
-	date = datetime.date.today().strftime("%Y-%m-%d")
-	delta = (datetime.date.today() - timedelta(days=7)).strftime("%Y-%m-%d")
-	
+	date = 	datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+	delta = (datetime.date.today() - timedelta(days=7)).strftime("%Y-%m-%d 00:00:00")
+
     	try:
-        	sqlCommand = "SELECT AVG(temperature) FROM temperaturedata WHERE dateandtime BETWEEN %s AND %s AND sensor=%s"
-		data = databaseHelper(sqlCommand,"Select",delta,date,sensor,"")
+        	sqlCommand = "SELECT AVG(temperature) FROM temperaturedata WHERE dateandtime BETWEEN '%s' AND '%s' AND sensor='%s'" % (delta,date,sensor)
+		data = databaseHelper(sqlCommand,"Select")
 		weekAverageTemp = "%.2f" % data
    	except:
 		pass
@@ -105,7 +107,7 @@ def emailWarning(msg, msgType):
 	return
 	
 # helper function for database actions. Handles select, insert and sqldumpings. Update te be added later
-def databaseHelper(sqlcommand,sqloperation,param1,param2,param3,param4):
+def databaseHelper(sqlCommand,sqloperation):
 
 	configurations = getConfigurations()
 
@@ -122,14 +124,13 @@ def databaseHelper(sqlcommand,sqloperation,param1,param2,param3,param4):
 
 	if sqloperation == "Select":
 		try:
-			cursor.execute(sqlCommand,(param1,param2,param3,param4))
+			cursor.execute(sqlCommand)
 			data = cursor.fetchone()
-      		except:
+  		except:
 			db.rollback()
-
 	elif sqloperation == "Insert":
         	try:
-        		cursor.execute(sqlcommand,(param1,param2,param3,param4))
+			cursor.execute(sqlCommand)
                 	db.commit()
         	except:
                 	db.rollback()
@@ -155,24 +156,25 @@ def databaseHelper(sqlcommand,sqloperation,param1,param2,param3,param4):
 # function for checking log that when last warning was sended, also inserts new entry to log if warning is sent
 def checkWarningLog(sensor, sensortemp):
 
-	currentTime = datetime.datetime.now()
+	currentTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 	lastLoggedTime = ""
 	lastSensor = ""
 	triggedLimit = ""
 	lastTemperature = ""
 	warning = ""
 	okToUpdate = False
-
 	# sql command for selecting last send time for sensor that trigged the warning
-	sqlCommand = "select * from mailsendlog where triggedsensor=%s and mailsendtime IN (SELECT max(mailsendtime)FROM mailsendlog where triggedsensor=%s)"
-	data = databaseHelper(sqlcommand,"Select",sensor,sensor," "," ")
+
+	sqlCommand = "select * from mailsendlog where triggedsensor='%s' and mailsendtime IN (SELECT max(mailsendtime)FROM mailsendlog where triggedsensor='%s')" % (sensor,sensor)
+	data = databaseHelper(sqlCommand,"Select")
 
 	# If there weren't any entries in database, then it is assumed that this is fresh database and first entry is needed
 	if data == None:
-	       	sqlCommand = "INSERT INTO mailsendlog SET mailsendtime=%s, triggedsensor=%s, triggedlimit=%s ,lasttemperature=%s"
-		databaseHelper(sqlCommand,"Insert",sensor,"0.0",sensortemp,"")
+	       	sqlCommand = "INSERT INTO mailsendlog SET mailsendtime='%s', triggedsensor='%s', triggedlimit='%s' ,lasttemperature='%s'" % (currentTime,sensor,"0.0",sensortemp)
+		databaseHelper(sqlCommand,"Insert")
 		lastLoggedTime = currentTime
 		lastTemperature = sensortemp
+		okToUpdate = True
 	else:
 		lastLoggedTime = data[0]
 		lastSensor = data[1]
@@ -230,11 +232,13 @@ def getConfigurations():
 
 def main():
 
+	currentTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
 	configurations = getConfigurations()
 
 	# how many sensors there is 1 or 2
 	sensorsToRead = configurations["sensoramount"]
-	
+		
 	# Sensor names to add to database, e.g. carage, outside
 	sensor1 = configurations["sensors"][0]["sensor1"]
 	sensor2 = configurations["sensors"][0]["sensor2"]
@@ -260,88 +264,105 @@ def main():
 
 	# check if it is 5 o clock. If yes, take sql dump as backup
 	if h.hour == 5:
-		databaseHelper("","Backup","","","","")
+		databaseHelper("","Backup")
 
 	# check if it is sunday, if yes send connection check on 23.00		
-	if d == 6 and h.hour == 23:	
-		weeklyAverage  = getWeeklyAverageTemp(sensor1)
-		msgType = "Info"	
-		Message = "Connection check. Weekly average from {0} is {1}".format(sensor1,weeklyAverage)
-		emailWarning(Message, msgType)
+	if d == 6 and h.hour == 13 and (h.minute > 0 and h.minute <5):
+		try:
+			sensor1weeklyAverage = getWeeklyAverageTemp(sensor1)
+			if sensor1weeklyAverage != None and sensor1weeklyAverage != '':
+				msgType = "Info"	
+				Message = "Connection check. Weekly average from {0} is {1}".format(sensor1,sensor1weeklyAverage)
+				emailWarning(Message, msgType)
+			if sensorsToRead != "1":
+				sensor2weeklyAverage = getWeeklyAverageTemp(sensor2)
+				if sensor2weeklyAverage != None and sensor2weeklyAverage != '':
+					msgType = "Info"	
+					Message = "Connection check. Weekly average from {0} is {1}".format(sensor2,sensor2weeklyAverage)
+					emailWarning(Message, msgType)
+		except:
+			emailWarning("Couldn't get average temperatures from current week","Warning")
+			pass			
 
 	# default message type to send as email. DO NOT CHANGE
 	msgType = "Warning"	
 
+	sensor1error = 0
 	# Sensor 1 readings and limit check
 	try:
 		sensor1temperature, sensor1humidity = sensorReadings(gpioForSensor1, sensorType)
 		limitsOk,warningMessage = checkLimits(sensor1,sensor1temperature,sensor1humidity,sensor1highlimit,sensor1lowlimit)
 	except:
 		emailWarning("Failed to read {0} sensor".format(sensor1),msgType)
-		sys.exit(0)
+		sensor1error = 1
+		pass
 
-	try:
-		# if limits were trigged
-		if limitsOk == False:
-			print(sensor1,sensor1temperature)
-			# check log when was last warning sended
-			okToUpdate, tempWarning = checkWarningLog(sensor1,sensor1temperature)	
-			if okToUpdate == True:
-				# enough time has passed since last warning or temperature has increased/decreased by 5 degrees since last measurement
-				warningMessage = warningMessage + "\n" + tempWarning
-				# send warning
-				emailWarning(warningMessage, msgType)
-				try:
-				# Insert line to database to indicate when warning was sent
-					sqlCommand = "INSERT INTO mailsendlog SET mailsendtime=%s, triggedsensor=%s, triggedlimit=%s ,lasttemperature=%s"
-					databaseHelper(sqlCommand,"Insert",sensor1,sensor1lowlimit,sensor1temperature,"")
-				except:
-					# if database insert failed, send warning to indicate that there is some issues with database
-					emailWarning("Failed to insert entry from {0} to mailsendlog".format(sensor1),msgType)	
-	except: 
-		# if limits were triggered but something caused error, send warning mail to indicate this
-		emailWarning("Failed to check/insert log entry from mailsendlog. Sensor: {0}".format(sensor1),msgType)	
-		sys.exit(0)
-			
+	if sensor1error == 0:
+		try:
+			# if limits were trigged
+			if limitsOk == False:
+				# check log when was last warning sended
+				okToUpdate, tempWarning = checkWarningLog(sensor1,sensor1temperature)
+		except: 
+			# if limits were triggered but something caused error, send warning mail to indicate this
+			emailWarning("Failed to check/insert log entry from mailsendlog. Sensor: {0}".format(sensor1),msgType)	
+			sys.exit(0)
+
+		if okToUpdate == True:
+			# enough time has passed since last warning or temperature has increased/decreased by 5 degrees since last measurement
+			warningMessage = warningMessage + "\n" + tempWarning
+			# send warning
+			emailWarning(warningMessage, msgType)
+			try:
+			# Insert line to database to indicate when warning was sent
+				currentTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+				sqlCommand = "INSERT INTO mailsendlog SET mailsendtime='%s', triggedsensor='%s', triggedlimit='%s' ,lasttemperature='%s'" % (currentTime,sensor1,sensor1lowlimit,sensor1temperature)
+				databaseHelper(sqlCommand,"Insert")
+			except:
+				# if database insert failed, send warning to indicate that there is some issues with database
+				emailWarning("Failed to insert from {0} to mailsendlog".format(sensor1),msgType)	
+	
 	# sensor 2 readings and limit check
-	# NOTE, IF YOU WANT TO  USE ONLY ONE SENSOR, REMOVE BLOCK BETWEEN "OPTIONAL" TAGS
-	# OPTIONAL
+	sensor2error = 0
+	
 	if sensorsToRead != "1":
 		try:
 			sensor2temperature, sensor2humidity = sensorReadings(gpioForSensor2, sensorType)
 			limitsOk,warningMessage = checkLimits(sensor2,sensor2temperature,sensor2humidity,sensor2highlimit,sensor2lowlimit)
 		except:
 			emailWarning("Failed to read {0} sensor".format(sensor2),msgType)
-			sys.exit(0)
+			sensor2error = 1
+			pass
 
-		try:		
-			if limitsOk == False:
-				okToUpdate, tempWarning = checkWarningLog(sensor2,sensor2temperature)	
-				if okToUpdate == True:
-					warningMessage = warningMessage + "\n" + tempWarning
-					emailWarning(warningMessage, msgType)
-					try:
-						# Insert line to database to indicate when warning was sent
-				       		sqlCommand = "INSERT INTO mailsendlog SET mailsendtime=%s, triggedsensor=%s, triggedlimit=%s ,lasttemperature=%s"
-						databaseHelper(sqlCommand,"Insert",sensor2,sensor2lowlimit,sensor2temperature,"")
-					except:
-						emailWarning("Failed to insert entry from {0} to mailsendlog".format(sensor1),msgType)	
-		except:
-			emailWarning("Failed to check/insert log entry from mailsendlog. Sensor: {0}".format(sensor2),msgType)	
-	# OPTIONAL
-	
+		if sensor2error == 0:
+			try:		
+				if limitsOk == False:
+					okToUpdate, tempWarning = checkWarningLog(sensor2,sensor2temperature)	
+
+			except:
+				emailWarning("Failed to check/insert log entry from mailsendlog. Sensor: {0}".format(sensor2),msgType)	
+				sys.exit(0)
+
+			if okToUpdate == True:
+				warningMessage = warningMessage + "\n" + tempWarning
+				emailWarning(warningMessage, msgType)
+				try:
+					# Insert line to database to indicate when warning was sent
+			       		sqlCommand = "INSERT INTO mailsendlog SET mailsendtime='%s', triggedsensor='%s', triggedlimit='%s' ,lasttemperature='%s'" % (currentTime,sensor2,sensor2lowlimit,sensor2temperature)
+					databaseHelper(sqlCommand,"Insert")
+				except:
+					emailWarning("Failed to insert entry from {0} to mailsendlog".format(sensor1),msgType)	
+
 	# insert values to db
 	try:
-		currentTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-		sqlCommand = "INSERT INTO temperaturedata SET dateandtime=%s, sensor=%s, temperature=%s, humidity=%s"
-		databaseHelper(sqlCommand,"Insert",currentTime,sensor1,sensor1temperature,sensor1humidity)
-	# OPTIONAL
-		if sensorsToRead != "1":
-			databaseHelper(sqlCommand,"Insert",currentTime,sensor2,sensor2temperature,sensor2humidity)
-	# OPTIONAL
+		if sensor1error == 0:
+			sqlCommand = "INSERT INTO temperaturedata SET dateandtime='%s', sensor='%s', temperature='%s', humidity='%s'" % (currentTime,sensor1,sensor1temperature,sensor1humidity)
+			databaseHelper(sqlCommand,"Insert")
+		if sensorsToRead != "1" and sensor2error == 0:
+			sqlCommand = "INSERT INTO temperaturedata SET dateandtime='%s', sensor='%s', temperature='%s', humidity='%s'" % (currentTime,sensor2,sensor2temperature,sensor2humidity)
+			databaseHelper(sqlCommand,"Insert")
    	except:
 		sys.exit(0)
 
 if __name__ == "__main__":
 	main()
-
