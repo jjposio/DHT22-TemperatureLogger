@@ -23,7 +23,8 @@
 # and with sensor libraries that Adafruit provides for them. This script alone, without
 # sensor/s to provide data for it doesn't really do anyting useful.
 # For guidance how to create your own temperature logger that makes use of this script,
-# Adafruit DHT22 sensors and raspberry pi, visit :
+# Adafruit DHT22 sensors and raspberry pi, visit : 
+# http://www.instructables.com/id/Raspberry-PI-and-DHT22-temperature-and-humidity-lo/
 
 #!/usr/bin/python2
 #coding=utf-8
@@ -267,7 +268,7 @@ def main():
 		databaseHelper("","Backup")
 
 	# check if it is sunday, if yes send connection check on 23.00		
-	if d == 6 and h.hour == 13 and (h.minute > 0 and h.minute <5):
+	if d == 6 and h.hour == 23 and (h.minute > 0 and h.minute < 15):
 		try:
 			sensor1weeklyAverage = getWeeklyAverageTemp(sensor1)
 			if sensor1weeklyAverage != None and sensor1weeklyAverage != '':
