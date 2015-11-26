@@ -1,4 +1,4 @@
-# Copyright (c) 2015
+﻿# Copyright (c) 2015
 # Author: Janne Posio
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -157,7 +157,8 @@ def databaseHelper(sqlCommand,sqloperation):
 # function for checking log that when last warning was sended, also inserts new entry to log if warning is sent
 def checkWarningLog(sensor, sensortemp):
 
-	currentTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+	currentTime = datetime.datetime.now()
+	currentTimeAsString = datetime.datetime.strftime(currentTime,"%Y-%m-%d %H:%M:%S")
 	lastLoggedTime = ""
 	lastSensor = ""
 	triggedLimit = ""
@@ -171,9 +172,9 @@ def checkWarningLog(sensor, sensortemp):
 
 	# If there weren't any entries in database, then it is assumed that this is fresh database and first entry is needed
 	if data == None:
-	       	sqlCommand = "INSERT INTO mailsendlog SET mailsendtime='%s', triggedsensor='%s', triggedlimit='%s' ,lasttemperature='%s'" % (currentTime,sensor,"0.0",sensortemp)
+	       	sqlCommand = "INSERT INTO mailsendlog SET mailsendtime='%s', triggedsensor='%s', triggedlimit='%s' ,lasttemperature='%s'" % (currentTimeAsString,sensor,"0.0",sensortemp)
 		databaseHelper(sqlCommand,"Insert")
-		lastLoggedTime = currentTime
+		lastLoggedTime = currentTimeAsString
 		lastTemperature = sensortemp
 		okToUpdate = True
 	else:
@@ -181,28 +182,29 @@ def checkWarningLog(sensor, sensortemp):
 		lastSensor = data[1]
 		triggedLimit = data[2]
 		lastTemperature = data[3]
-	
+
 	# check that has couple of hours passed from the time that last warning was sended.
 	# this check is done so you don't get warning everytime that sensor is trigged. E.g. sensor is checked every 5 minutes, temperature is lower than trigger -> you get warning every 5 minutes and mail is flooded.
 	try:
 		delta = currentTime - lastLoggedTime
 		passedTime = (float(delta.seconds) // 3600)
-
-		if passedTime >= 2.0:
+	
+		if passedTime > 2:
 			okToUpdate = True
 		else:
 			pass
 	except:
 		pass
-		
+
 	# another check. If enough time were not passed, but if temperature has for some reason increased or dropped 5 degrees since last alarm, something might be wrong and warning mail is needed
 	if okToUpdate == False:
-		if sensortemp > float(lastTemperature) + 5.0:
-			okToUpdate = True
-			warning = "NOTE: Temperature increased 5 degrees"
-		if sensortemp < float(lastTemperature) - 5.0:
-			okToUpdate = True
-			warning = "NOTE: Temperature decreased 5 degrees"
+		if "conchck" not in sensor:
+			if sensortemp > float(lastTemperature) + 5.0:
+				okToUpdate = True
+				warning = "NOTE: Temperature increased 5 degrees"
+			if sensortemp < float(lastTemperature) - 5.0:
+				okToUpdate = True
+				warning = "NOTE: Temperature decreased 5 degrees"
 
 	return okToUpdate, warning
 
@@ -253,6 +255,15 @@ def main():
 	# Sensor gpios
 	gpioForSensor1 = configurations["sensorgpios"][0]["gpiosensor1"]
 	gpioForSensor2 = configurations["sensorgpios"][0]["gpiosensor2"]
+	
+	# Backup enabled
+	backupEnabled = configurations["sqlBackupDump"][0]["backupDumpEnabled"]
+	backupHour = configurations["sqlBackupDump"][0]["backupHour"]
+	
+	# Connection check enabled
+	connectionCheckEnabled = configurations["connectionCheck"][0]["connectionCheckEnabled"]
+	connectionCheckDay = configurations["connectionCheck"][0]["connectionCheckDay"]
+	connectionCheckHour = configurations["connectionCheck"][0]["connectionCheckHour"]
 
 	# type of the sensor used, e.g. DHT22 = 22
 	sensorType = configurations["sensortype"]
@@ -264,26 +275,45 @@ def main():
 	h = datetime.datetime.now()
 
 	# check if it is 5 o clock. If yes, take sql dump as backup
-	if h.hour == 5:
-		databaseHelper("","Backup")
+	if backupEnabled == "Y" or backupEnabled == "y":
+		if h.hour == int(backupHour):
+			databaseHelper("","Backup")
 
-	# check if it is sunday, if yes send connection check on 23.00		
-	if d == 6 and h.hour == 23 and (h.minute > 0 and h.minute < 15):
-		try:
-			sensor1weeklyAverage = getWeeklyAverageTemp(sensor1)
-			if sensor1weeklyAverage != None and sensor1weeklyAverage != '':
-				msgType = "Info"	
-				Message = "Connection check. Weekly average from {0} is {1}".format(sensor1,sensor1weeklyAverage)
-				emailWarning(Message, msgType)
+	# check if it is sunday, if yes send connection check on 23.00
+	if connectionCheckEnabled == "Y" or connectionCheckEnabled == "y":
+		okToUpdate = False
+		if str(d) == str(connectionCheckDay) and str(h.hour) == str(connectionCheckHour):
+			try:
+				sensor1weeklyAverage = getWeeklyAverageTemp(sensor1)
+				if sensor1weeklyAverage != None and sensor1weeklyAverage != '':
+					checkSensor = sensor1+" conchck"
+					okToUpdate, tempWarning = checkWarningLog(checkSensor,sensor1weeklyAverage)
+					if okToUpdate == True:
+						msgType = "Info"
+						Message = "Connection check. Weekly average from {0} is {1}".format(sensor1,sensor1weeklyAverage)
+						emailWarning(Message, msgType)
+						sqlCommand = "INSERT INTO mailsendlog SET mailsendtime='%s', triggedsensor='%s', triggedlimit='%s' ,lasttemperature='%s'" % (currentTime,checkSensor,sensor1lowlimit,sensor1weeklyAverage)
+						databaseHelper(sqlCommand,"Insert")
+			except:
+				emailWarning("Couldn't get average temperature to sensor: {0} from current week".format(sensor1),msgType)
+				pass				
+
 			if sensorsToRead != "1":
-				sensor2weeklyAverage = getWeeklyAverageTemp(sensor2)
-				if sensor2weeklyAverage != None and sensor2weeklyAverage != '':
-					msgType = "Info"	
-					Message = "Connection check. Weekly average from {0} is {1}".format(sensor2,sensor2weeklyAverage)
-					emailWarning(Message, msgType)
-		except:
-			emailWarning("Couldn't get average temperatures from current week","Warning")
-			pass			
+				okToUpdate = False
+				try:
+					sensor2weeklyAverage = getWeeklyAverageTemp(sensor2)
+					if sensor2weeklyAverage != None and sensor2weeklyAverage != '':
+						checkSensor = sensor2+" conchck"
+						okToUpdate, tempWarning = checkWarningLog(checkSensor,sensor2weeklyAverage)
+						if okToUpdate == True:
+							msgType = "Info"	
+							Message = "Connection check. Weekly average from {0} is {1}".format(sensor2,sensor2weeklyAverage)
+							emailWarning(Message, msgType)
+							sqlCommand = "INSERT INTO mailsendlog SET mailsendtime='%s', triggedsensor='%s', triggedlimit='%s' ,lasttemperature='%s'" % (currentTime,checkSensor,sensor2lowlimit,sensor2weeklyAverage)
+							databaseHelper(sqlCommand,"Insert")
+				except:
+					emailWarning( "Couldn't get average temperature to sensor: {0} from current week".format(sensor2),msgType)
+					pass			
 
 	# default message type to send as email. DO NOT CHANGE
 	msgType = "Warning"	

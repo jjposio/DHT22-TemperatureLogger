@@ -27,6 +27,15 @@
 	"subjectmessage":"Info from temperature logger",
 	"subjectwarning":"Warning from temperature logger"
 	}],
+"sqlBackupDump":[{
+	"backupDumpEnabled":"y",
+	"backupHour":"23"
+	}],
+"connectionCheck":[{
+	"connectionCheckEnabled":"y",
+	"connectionCheckDay":"5",
+	"connectionCheckHour":"23"
+	}],
 "sensortype":"22",
 "sensoramount":"2",
 "sqlbackuppath":"/home/pi/DHT22-TemperatureLogger/Backups/",
