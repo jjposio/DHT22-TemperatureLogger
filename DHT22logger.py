@@ -390,6 +390,8 @@ def main():
 	try:
 		if sensor1error == 0:
 			sqlCommand = "INSERT INTO temperaturedata SET dateandtime='%s', sensor='%s', temperature='%s', humidity='%s'" % (currentTime,sensor1,sensor1temperature,sensor1humidity)
+			# This row below sets temperature as fahrenheit instead of celsius. Comment above line and uncomment one below to take changes into use
+			#sqlCommand = "INSERT INTO temperaturedata SET dateandtime='%s', sensor='%s', temperature='%s', humidity='%s'" % (currentTime,sensor1,(sensor1temperature*(9.0/5.0)+32),sensor1humidity)
 			databaseHelper(sqlCommand,"Insert")
 		if sensorsToRead != "1" and sensor2error == 0:
 			sqlCommand = "INSERT INTO temperaturedata SET dateandtime='%s', sensor='%s', temperature='%s', humidity='%s'" % (currentTime,sensor2,sensor2temperature,sensor2humidity)
