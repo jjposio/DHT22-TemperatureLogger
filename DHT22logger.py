@@ -186,9 +186,9 @@ def checkWarningLog(sensor, sensortemp):
 	# check that has couple of hours passed from the time that last warning was sended.
 	# this check is done so you don't get warning everytime that sensor is trigged. E.g. sensor is checked every 5 minutes, temperature is lower than trigger -> you get warning every 5 minutes and mail is flooded.
 	try:
-		delta = currentTime - lastLoggedTime
-		passedTime = (float(delta.seconds) // 3600)
-	
+		delta = (currentTime - lastLoggedTime).total_seconds()
+		passedTime = delta // 3600
+
 		if passedTime > 2:
 			okToUpdate = True
 		else:
@@ -197,6 +197,7 @@ def checkWarningLog(sensor, sensortemp):
 		pass
 
 	# another check. If enough time were not passed, but if temperature has for some reason increased or dropped 5 degrees since last alarm, something might be wrong and warning mail is needed
+	# TODO: Add humidity increase / decrease check as well...requires change to database as well.
 	if okToUpdate == False:
 		if "conchck" not in sensor:
 			if sensortemp > float(lastTemperature) + 5.0:
@@ -205,21 +206,31 @@ def checkWarningLog(sensor, sensortemp):
 			if sensortemp < float(lastTemperature) - 5.0:
 				okToUpdate = True
 				warning = "NOTE: Temperature decreased 5 degrees"
-
+			
 	return okToUpdate, warning
 
 	# Function for checking limits. If temperature is lower or greater than limit -> do something
-def checkLimits(sensor,sensorTemperature,sensorHumidity,sensorhighlimit,sensorlowlimit):
+def checkLimits(sensor,sensorTemperature,sensorHumidity,sensorhighlimit,sensorlowlimit,humidityHighLimit,humidityLowLimit):
 	
 	check = True
 	warningmsg = ""
-	
+
+	# check temperature measurements against limits
 	if float(sensorTemperature) < float(sensorlowlimit):
-		warningmsg = "Temperature low on sensor: {0}\nReading: {1}\nLimit: {2}\nHumidity: {3}".format(sensor,sensorTemperature,sensorlowlimit,sensorHumidity)
+		warningmsg = "Temperature low on sensor: {0}\nTemperature: {1}\nTemperature limit: {2}\nHumidity: {3}".format(sensor,sensorTemperature,sensorlowlimit,sensorHumidity)
 		check = False
 	elif float(sensorTemperature) > float(sensorhighlimit):
-		warningmsg = "Temperature too high on sensor: {0}\nReading: {1}\nLimit: {2}\nHumidity: {3}".format(sensor,sensorTemperature,sensorhighlimit,sensorHumidity)
+		warningmsg = "Temperature high on sensor: {0}\nTemperature: {1}\nTemperature limit: {2}\nHumidity: {3}".format(sensor,sensorTemperature,sensorhighlimit,sensorHumidity)
 		check = False
+
+	# check humidity measurements against limits
+	elif float(sensorHumidity) < float(humidityLowLimit):
+		warningmsg = "Humidity low on sensor: {0}\nTemperature: {1}\nHumidity limit: {2}\nHumidity: {3}".format(sensor,sensorTemperature,humidityLowLimit,sensorHumidity)
+		check = False
+        elif float(sensorHumidity) > float(humidityHighLimit):
+       	        warningmsg = "Humidity high on sensor: {0}\nTemperature: {1}\nHumidity limit: {2}\nHumidity: {3}".format(sensor,sensorTemperature,humidityHighLimit,sensorHumidity)
+                check = False
+
 	return check,warningmsg
 	
 	# helper function for getting configurations from config json file
@@ -246,11 +257,17 @@ def main():
 	sensor1 = configurations["sensors"][0]["sensor1"]
 	sensor2 = configurations["sensors"][0]["sensor2"]
 
-	# limits for triggering alarms
+	# temperature limits for triggering alarms
 	sensor1lowlimit = configurations["triggerlimits"][0]["sensor1lowlimit"]
 	sensor2lowlimit = configurations["triggerlimits"][0]["sensor2lowlimit"]
 	sensor1highlimit = configurations["triggerlimits"][0]["sensor1highlimit"]
 	sensor2highlimit = configurations["triggerlimits"][0]["sensor2highlimit"]
+
+	# humidity limits for triggering alarms
+	sensor1_humidity_low_limit = configurations["humiditytriggers"][0]["sensor1_humidity_low_limit"]
+	sensor1_humidity_high_limit = configurations["humiditytriggers"][0]["sensor1_humidity_high_limit"]
+	sensor2_humidity_low_limit = configurations["humiditytriggers"][0]["sensor2_humidity_low_limit"]
+	sensor2_humidity_high_limit = configurations["humiditytriggers"][0]["sensor2_humidity_high_limit"]
 
 	# Sensor gpios
 	gpioForSensor1 = configurations["sensorgpios"][0]["gpiosensor1"]
@@ -323,7 +340,7 @@ def main():
 	# Sensor 1 readings and limit check
 	try:
 		sensor1temperature, sensor1humidity = sensorReadings(gpioForSensor1, sensorType)
-		limitsOk,warningMessage = checkLimits(sensor1,sensor1temperature,sensor1humidity,sensor1highlimit,sensor1lowlimit)
+		limitsOk,warningMessage = checkLimits(sensor1,sensor1temperature,sensor1humidity,sensor1highlimit,sensor1lowlimit,sensor1_humidity_high_limit,sensor1_humidity_low_limit)
 	except:
 		emailWarning("Failed to read {0} sensor".format(sensor1),msgType)
 		sensor1error = 1
@@ -361,7 +378,7 @@ def main():
 	if sensorsToRead != "1":
 		try:
 			sensor2temperature, sensor2humidity = sensorReadings(gpioForSensor2, sensorType)
-			limitsOk,warningMessage = checkLimits(sensor2,sensor2temperature,sensor2humidity,sensor2highlimit,sensor2lowlimit)
+			limitsOk,warningMessage = checkLimits(sensor2,sensor2temperature,sensor2humidity,sensor2highlimit,sensor2lowlimit,sensor2_humidity_high_limit,sensor2_humidity_low_limit)
 		except:
 			emailWarning("Failed to read {0} sensor".format(sensor2),msgType)
 			sensor2error = 1
@@ -394,7 +411,9 @@ def main():
 			#sqlCommand = "INSERT INTO temperaturedata SET dateandtime='%s', sensor='%s', temperature='%s', humidity='%s'" % (currentTime,sensor1,(sensor1temperature*(9.0/5.0)+32),sensor1humidity)
 			databaseHelper(sqlCommand,"Insert")
 		if sensorsToRead != "1" and sensor2error == 0:
-			sqlCommand = "INSERT INTO temperaturedata SET dateandtime='%s', sensor='%s', temperature='%s', humidity='%s'" % (currentTime,sensor2,sensor2temperature,sensor2humidity)
+			sqlCommand = "INSERT INTO temperaturedata SET dateandtime='%s', sensor='%s', temperature='%s', humidity='%s'" % (currentTime,sensor2,sensor2temperature,sensor2humidity)		
+			# This row below sets temperature as fahrenheit instead of celsius. Comment above line and uncomment one below to take changes into use
+			#sqlCommand = "INSERT INTO temperaturedata SET dateandtime='%s', sensor='%s', temperature='%s', humidity='%s'" % (currentTime,sensor2,(sensor2temperature*(9.0/5.0)+32),sensor2humidity)
 			databaseHelper(sqlCommand,"Insert")
    	except:
 		sys.exit(0)

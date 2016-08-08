@@ -15,6 +15,12 @@
 	"sensor1highlimit":"35",
 	"sensor2highlimit":"20"
 	}],
+"humiditytriggers":[{
+	"sensor1_humidity_low_limit":"40",
+	"sensor1_humidity_high_limit":"60",
+	"sensor2_humidity_low_limit":"40",
+	"sensor2_humidity_high_limit":"60"
+	}],
 "sensorgpios":[{
 	"gpiosensor1":"22",
 	"gpiosensor2":"23"
