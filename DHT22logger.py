@@ -315,7 +315,7 @@ def main():
 			sensorError = True
 			pass
 
-		if sensorError:
+		if sensorError == False:
 			try:
 				# if limits were trigged
 				if limitsOk == False:
