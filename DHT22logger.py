@@ -247,8 +247,6 @@ def getConfigurations():
 
 def main():
 
-	currentTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
 	configurations = getConfigurations()
 
 	# Sensors
@@ -280,6 +278,8 @@ def main():
 			for sensor in sensors:
 				sensorId = sensor["id"]
 				okToUpdate = False
+				#For better accuracy, or use mysql timestamp DEFAULT CURRENT_TIMESTAMP
+				currentTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 				try:
 					sensorWeeklyAverage = getWeeklyAverageTemp(sensorId)
 					if sensorWeeklyAverage != None and sensorWeeklyAverage != '':
@@ -304,6 +304,8 @@ def main():
 		sensorId = sensor["id"]
 		okToUpdate = False
 		sensorError = False
+		#For better accuracy, or use mysql timestamp DEFAULT CURRENT_TIMESTAMP
+		currentTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 		try:
 			# type of the sensor used, e.g. DHT22 = 22
 			sensorTemperature, sensorHumidity = sensorReadings(sensor["gpio"], sensor["type"])
@@ -349,6 +351,7 @@ def main():
 
 		   	except:
 				#sys.exit(0)
+				#don't exit because of for loop
 				print "Database error"
 
 if __name__ == "__main__":
