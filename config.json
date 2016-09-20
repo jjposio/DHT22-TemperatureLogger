@@ -1,49 +1,48 @@
 {
-"mysql":[{
-	"host":"localhost",
-	"user":"logger",
-	"password":"password",
-	"database":"temperatures"
-	}],
-"sensors":[{
-	"sensor1":"Outside",
-	"sensor2":"Inside"
-	}],
-"triggerlimits":[{
-	"sensor1lowlimit":"-20",
-	"sensor2lowlimit":"5",
-	"sensor1highlimit":"35",
-	"sensor2highlimit":"20"
-	}],
-"humiditytriggers":[{
-	"sensor1_humidity_low_limit":"40",
-	"sensor1_humidity_high_limit":"60",
-	"sensor2_humidity_low_limit":"40",
-	"sensor2_humidity_high_limit":"60"
-	}],
-"sensorgpios":[{
-	"gpiosensor1":"22",
-	"gpiosensor2":"23"
-	}],
-"mailinfo":[{
-	"senderaddress":"email address to sender field@gmail.com",
-	"receiveraddress":"email address where to send warnings@gmail.com",
-	"username":"username",
-	"password":"password",
-	"subjectmessage":"Info from temperature logger",
-	"subjectwarning":"Warning from temperature logger"
-	}],
-"sqlBackupDump":[{
-	"backupDumpEnabled":"y",
-	"backupHour":"23"
-	}],
-"connectionCheck":[{
-	"connectionCheckEnabled":"y",
-	"connectionCheckDay":"5",
-	"connectionCheckHour":"23"
-	}],
-"sensortype":"22",
-"sensoramount":"2",
-"sqlbackuppath":"/home/pi/DHT22-TemperatureLogger/Backups/",
-"adafruitpath":"/home/pi/Adafruit_Python_DHT/examples/AdafruitDHT.py"
+	"mysql":{
+		"host":"localhost",
+		"user":"logger",
+		"password":"password",
+		"database":"temperatures"
+	},
+	"sensors":[
+		{
+		"id":"Outside",
+		"gpio":"22",
+		"type":"22",
+		"low_limit":"-20",
+		"high_limit":"35",
+		"humidity_low_limit":"40",
+		"humidity_high_limit":"60"
+		},
+		{
+		"id":"Inside",
+		"gpio":"23",
+		"type":"22",
+		"low_limit":"5",
+		"high_limit":"25",
+		"humidity_low_limit":"40",
+		"humidity_high_limit":"60"
+		}
+	],
+	"mailinfo":{
+		"enabled":false,
+		"from_address":"from@email.com",
+		"to_address":"to@email.com",
+		"username":"username",
+		"password":"password",
+		"subjectmessage":"Info from temperature logger",
+		"subjectwarning":"Warning from temperature logger"
+	},
+	"sqlBackupDump":{
+		"backupDumpEnabled":true,
+		"backupHour":"23"
+	},
+	"connectionCheck":{
+		"connectionCheckEnabled":true,
+		"connectionCheckDay":"5",
+		"connectionCheckHour":"23"
+	},
+	"sqlbackuppath":"/home/pi/DHT22-TemperatureLogger/Backups/",
+	"adafruitpath":"/home/pi/Adafruit_Python_DHT/examples/AdafruitDHT.py"
 }
