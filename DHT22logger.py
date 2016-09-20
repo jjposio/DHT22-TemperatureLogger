@@ -86,8 +86,8 @@ def emailWarning(msg, msgType):
 
 	configurations = getConfigurations()
 
-	fromaddr = configurations["mailinfo"]["senderaddress"]
-	toaddrs = configurations["mailinfo"]["receiveraddress"]
+	fromaddr = configurations["mailinfo"]["from_address"]
+	toaddrs = configurations["mailinfo"]["to_address"]
 	username = configurations["mailinfo"]["username"]
 	password = configurations["mailinfo"]["password"]
 	subj = configurations["mailinfo"]["subjectwarning"]
