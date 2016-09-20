@@ -263,9 +263,6 @@ def main():
 	connectionCheckDay = configurations["connectionCheck"]["connectionCheckDay"]
 	connectionCheckHour = configurations["connectionCheck"]["connectionCheckHour"]
 
-	# type of the sensor used, e.g. DHT22 = 22
-	sensorType = configurations["sensortype"]
-
 	# Default value for message type, not configurable
 	msgType = "Warning"
 
@@ -306,6 +303,7 @@ def main():
 	for sensor in sensors:
 		sensorId = sensor["id"]
 		try:
+			# type of the sensor used, e.g. DHT22 = 22
 			sensorTemperature, sensorHumidity = sensorReadings(sensor["gpio"], sensor["type"])
 			limitsOk,warningMessage = checkLimits(sensorId,sensorTemperature,sensorHumidity,sensor["high_limit"],sensor["low_limit"],sensor["humidity_high_limit"],sensor["humidity_low_limit"])
 		except:
