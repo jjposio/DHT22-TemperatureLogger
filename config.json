@@ -8,21 +8,21 @@
 	"sensors":[
 		{
 		"id":"Outside",
-		"gpio":22,
-		"type":22,
-		"low_limit":-20,
-		"high_limit":35,
-		"humidity_low_limit":40,
-		"humidity_high_limit":60
+		"gpio":"22",
+		"type":"22",
+		"low_limit":"-20",
+		"high_limit":"35",
+		"humidity_low_limit":"40",
+		"humidity_high_limit":"60"
 		},
 		{
-			"id":"Inside",
-			"gpio":23,
-			"type":22,
-			"low_limit":5,
-			"high_limit":25,
-			"humidity_low_limit":40,
-			"humidity_high_limit":60
+		"id":"Inside",
+		"gpio":"23",
+		"type":"22",
+		"low_limit":"5",
+		"high_limit":"25",
+		"humidity_low_limit":"40",
+		"humidity_high_limit":"60"
 		}
 	],
 	"mailinfo":{

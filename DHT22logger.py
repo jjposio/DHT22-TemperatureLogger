@@ -276,10 +276,10 @@ def main():
 
 	# check if it is sunday, if yes send connection check on 23.00
 	if connectionCheckEnabled:
-		okToUpdate = False
 		if str(d) == str(connectionCheckDay) and str(h.hour) == str(connectionCheckHour):
 			for sensor in sensors:
 				sensorId = sensor["id"]
+				okToUpdate = False
 				try:
 					sensorWeeklyAverage = getWeeklyAverageTemp(sensorId)
 					if sensorWeeklyAverage != None and sensorWeeklyAverage != '':
@@ -298,20 +298,24 @@ def main():
 	# default message type to send as email. DO NOT CHANGE
 	msgType = "Warning"
 
-	okToUpdate = False
+
 	# Sensor readings and limit check
 	for sensor in sensors:
 		sensorId = sensor["id"]
+		okToUpdate = False
+		sensorError = False
 		try:
 			# type of the sensor used, e.g. DHT22 = 22
 			sensorTemperature, sensorHumidity = sensorReadings(sensor["gpio"], sensor["type"])
+			print sensorId,"temp:",sensorTemperature,"hum:",sensorHumidity
 			limitsOk,warningMessage = checkLimits(sensorId,sensorTemperature,sensorHumidity,sensor["high_limit"],sensor["low_limit"],sensor["humidity_high_limit"],sensor["humidity_low_limit"])
 		except:
+			print sensorId,"failed to read"
 			emailWarning("Failed to read {0} sensor".format(sensorId),msgType)
-			sensorError = 1
+			sensorError = True
 			pass
 
-		if sensorError == 0:
+		if sensorError:
 			try:
 				# if limits were trigged
 				if limitsOk == False:
@@ -344,7 +348,8 @@ def main():
 				databaseHelper(sqlCommand,"Insert")
 
 		   	except:
-				sys.exit(0)
+				#sys.exit(0)
+				print "Database error"
 
 if __name__ == "__main__":
 	main()
