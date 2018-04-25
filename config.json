@@ -1,33 +1,16 @@
 {
 "mysql":[{
 	"host":"localhost",
-	"user":"logger",
+	"user":"monitor",
 	"password":"password",
 	"database":"temperatures"
 	}],
-"sensors":[{
-	"sensor1":"Outside",
-	"sensor2":"Inside"
-	}],
-"triggerlimits":[{
-	"sensor1lowlimit":"-20",
-	"sensor2lowlimit":"5",
-	"sensor1highlimit":"35",
-	"sensor2highlimit":"20"
-	}],
-"humiditytriggers":[{
-	"sensor1_humidity_low_limit":"40",
-	"sensor1_humidity_high_limit":"60",
-	"sensor2_humidity_low_limit":"40",
-	"sensor2_humidity_high_limit":"60"
-	}],
-"sensorgpios":[{
-	"gpiosensor1":"22",
-	"gpiosensor2":"23"
-	}],
-"mailinfo":[{
-	"senderaddress":"email address to sender field@gmail.com",
-	"receiveraddress":"email address where to send warnings@gmail.com",
+"sensors":
+	[[{"name":"Inside"},{"gpio":"22"},{"sensorType":"22"},{"temperatureLowLimit":"18"},{"temperatureHighLimit":"24"},{"temperatureThreshold":"5"},{"humidityLowLimit":"10"},{"humidityHighLimit":"60"},{"humidityThreshold":"10"}],
+	[{"name":"Outside"},{"gpio":"23"},{"sensorType":"22"},{"temperatureLowLimit":"-10"},{"temperatureHighLimit":"15"},{"temperatureThreshold":"5"},{"humidityLowLimit":"40"},{"humidityHighLimit":"60"},{"humidityThreshold":"10"}]],
+"mailInfo":[{
+	"senderaddress":"email address to sender field @gmail.com",
+	"receiveraddress":"email address where to send warnings @gmail.com",
 	"username":"username",
 	"password":"password",
 	"subjectmessage":"Info from temperature logger",
@@ -35,15 +18,16 @@
 	}],
 "sqlBackupDump":[{
 	"backupDumpEnabled":"y",
-	"backupHour":"23"
+	"backupDay":"1",
+	"backupHour":"23",
+	"backupDumpPath":"/home/pi/DHT22-TemperatureLogger/Backups/"
 	}],
-"connectionCheck":[{
-	"connectionCheckEnabled":"y",
-	"connectionCheckDay":"5",
-	"connectionCheckHour":"23"
+"weeklyAverages":[{
+	"weeklyAverageSendingEnabled":"y",
+	"weekDayForSendingAverages":"1",
+	"hourOfTheDayForSendingAverages":"23"
 	}],
-"sensortype":"22",
-"sensoramount":"2",
-"sqlbackuppath":"/home/pi/DHT22-TemperatureLogger/Backups/",
-"adafruitpath":"/home/pi/Adafruit_Python_DHT/examples/AdafruitDHT.py"
+"useFahrenheits":"n",
+"mailSendingTimeoutInFullHours":"1",
+"adafruitPath":"/home/pi/Adafruit_Python_DHT/examples/AdafruitDHT.py"
 }
